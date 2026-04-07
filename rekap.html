@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rekap Supervisi</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.filter-bar{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:1rem 1.25rem;margin-bottom:1rem;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-group label{font-size:11px;font-weight:500;color:var(--text-sec)}
+.filter-group select,
+.filter-group input{min-width:140px;padding:7px 10px;border:1px solid var(--border2);
+  border-radius:var(--radius);font-size:13px;color:var(--text);font-family:inherit;background:var(--bg)}
+.filter-group select:focus,
+.filter-group input:focus{border-color:var(--blue-mid);outline:none}
+.detail-row{background:var(--bg2);padding:10px 14px;border-bottom:1px solid var(--border);display:none}
+.detail-row.open{display:table-row}
+td.expand-btn{cursor:pointer;color:var(--text-hint);font-size:11px;white-space:nowrap}
+td.expand-btn:hover{color:var(--blue)}
+.asp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.asp-cell{background:var(--bg);border-radius:var(--radius);padding:8px 10px;border:1px solid var(--border)}
+.asp-lbl{font-size:10px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.04em}
+.asp-val{font-size:16px;font-weight:700;margin-top:2px}
+.empty-tr td{text-align:center;padding:2.5rem;color:var(--text-sec);font-size:13px}
+.sort-icon{opacity:.4;font-size:10px}
+.sort-icon.asc::after{content:'↑';opacity:1}
+.sort-icon.desc::after{content:'↓';opacity:1}
+.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.status-belum{background:var(--amber-light);color:var(--amber)}
+.status-proses{background:var(--blue-light);color:var(--blue)}
+.status-selesai{background:var(--green-light);color:var(--green)}
+.status-toggle{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--radius);
+  font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg);color:var(--text);font-family:inherit;transition:all .15s;margin-top:8px}
+.status-toggle:hover{border-color:var(--green);background:var(--green-light);color:var(--green)}
+.status-toggle.is-done{background:var(--green-light);color:var(--green);border-color:var(--green)}
+.status-toggle:disabled{opacity:.5;cursor:wait}
+@media(max-width:768px){
+  .filter-bar{flex-direction:column;gap:8px;padding:.75rem 1rem}
+  .filter-group{width:100%}
+  .filter-group select,.filter-group input{min-width:0;width:100%}
+  .asp-grid{grid-template-columns:1fr 1fr 1fr}
+}
+@media(max-width:480px){
+  .asp-grid{grid-template-columns:1fr}
+}
+@media print{
+  .filter-bar,.no-print{display:none!important}
+  .detail-row:not(.open){display:none!important}
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">Supervisi <span>RS</span></div>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="nav-links">
+    <a href="index.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Beranda</a>
+    <a href="form.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Formulir</a>
+    <a href="rekap.html" class="active" onclick="document.querySelector('.nav-links').classList.remove('open')">Rekap</a>
+    <a href="dashboard.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Dashboard</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Rekap &amp; Riwayat Supervisi</div>
+      <div class="page-sub" id="rekap-sub">Memuat data...</div>
+    </div>
+    <div class="page-header-actions no-print">
+      <button class="refresh-btn" onclick="refreshRekap()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Cetak / PDF
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Unduh CSV
+      </button>
+    </div>
+  </div>
+
+  <div class="filter-bar no-print">
+    <div class="filter-group">
+      <label>Jenis Supervisi</label>
+      <select id="f-jenis" onchange="applyFilter()">
+        <option value="">Semua jenis</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Ruangan</label>
+      <select id="f-ruangan" onchange="applyFilter()">
+        <option value="">Semua ruangan</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Kategori</label>
+      <select id="f-kategori" onchange="applyFilter()">
+        <option value="">Semua kategori</option>
+        <option>Sangat Baik</option>
+        <option>Baik</option>
+        <option>Cukup</option>
+        <option>Kurang</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Dari tanggal</label>
+      <input type="date" id="f-dari" onchange="applyFilter()">
+    </div>
+    <div class="filter-group">
+      <label>Sampai tanggal</label>
+      <input type="date" id="f-sampai" onchange="applyFilter()">
+    </div>
+    <div class="filter-group">
+      <label>Cari nama</label>
+      <input type="text" id="f-cari" placeholder="Nama perawat..." oninput="applyFilter()">
+    </div>
+    <div class="filter-group">
+      <label>Status</label>
+      <select id="f-status" onchange="applyFilter()">
+        <option value="">Semua status</option>
+        <option>Belum Diperbaiki</option>
+        <option>Dalam Proses</option>
+        <option>Selesai</option>
+      </select>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="resetFilter()">Reset</button>
+  </div>
+
+  <div id="toast-area"></div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div id="loading-row" style="padding:2rem;text-align:center;color:var(--text-sec)">
+      <span class="loading loading-dark"></span>
+      <span style="margin-left:8px;font-size:13px">Memuat data...</span>
+    </div>
+    <div class="table-wrap">
+      <table id="rekap-table" style="display:none">
+        <thead>
+          <tr>
+            <th onclick="sortTable('tanggal')">Tanggal <span class="sort-icon" id="sort-tanggal"></span></th>
+            <th onclick="sortTable('jenis_supervisi')">Jenis <span class="sort-icon" id="sort-jenis_supervisi"></span></th>
+            <th onclick="sortTable('ruangan')">Ruangan <span class="sort-icon" id="sort-ruangan"></span></th>
+            <th onclick="sortTable('nama_perawat')">Perawat <span class="sort-icon" id="sort-nama_perawat"></span></th>
+            <th>Shift</th>
+            <th onclick="sortTable('skor_total')">Total <span class="sort-icon" id="sort-skor_total"></span></th>
+            <th>Kategori</th>
+            <th onclick="sortTable('status_perbaikan')">Status <span class="sort-icon" id="sort-status_perbaikan"></span></th>
+            <th class="no-print">Detail</th>
+          </tr>
+        </thead>
+        <tbody id="rekap-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-4" style="margin-top:1rem" id="summary-stats"></div>
+</div>
+
+<script src="config.js"></script>
+<script>
+var allData = [];
+var filtered = [];
+var sortKey = 'tanggal';
+var sortDir = 'desc';
+
+async function loadData() {
+  document.getElementById('loading-row').style.display = 'block';
+  document.getElementById('rekap-table').style.display = 'none';
+
+  var data = ambilLokal();
+
+  if (!CONFIG.APPS_SCRIPT_URL.includes('GANTI')) {
+    try {
+      var resp = await fetch(CONFIG.APPS_SCRIPT_URL + '?action=getData');
+      var result = await resp.json();
+      if (result.data && result.data.length) {
+        data = result.data;
+        localStorage.setItem('supervisi_data', JSON.stringify(data));
+      }
+    } catch (e) {
+      console.warn('Gagal fetch dari Sheets, pakai data lokal:', e);
+    }
+  }
+
+  allData = data;
+  populateFilters();
+  applyFilter();
+  document.getElementById('loading-row').style.display = 'none';
+  document.getElementById('rekap-table').style.display = 'table';
+}
+
+function populateFilters() {
+  var selRuangan = document.getElementById('f-ruangan');
+  var existingR = Array.from(selRuangan.options).map(function(o) { return o.value; });
+  var ruanganSet = new Set(allData.map(function(d) { return d.ruangan; }));
+  Array.from(ruanganSet).sort().forEach(function(r) {
+    if (!existingR.includes(r)) {
+      var opt = document.createElement('option');
+      opt.value = opt.textContent = r;
+      selRuangan.appendChild(opt);
+    }
+  });
+
+  var selJenis = document.getElementById('f-jenis');
+  var existingJ = Array.from(selJenis.options).map(function(o) { return o.value; });
+  var jenisSet = new Set(allData.map(function(d) { return d.jenis_supervisi; }).filter(Boolean));
+  Array.from(jenisSet).sort().forEach(function(j) {
+    if (!existingJ.includes(j)) {
+      var opt = document.createElement('option');
+      opt.value = opt.textContent = j;
+      selJenis.appendChild(opt);
+    }
+  });
+}
+
+function applyFilter() {
+  var ruangan = document.getElementById('f-ruangan').value;
+  var kategori = document.getElementById('f-kategori').value;
+  var dari = document.getElementById('f-dari').value;
+  var sampai = document.getElementById('f-sampai').value;
+  var cari = document.getElementById('f-cari').value.toLowerCase();
+  var jenis = document.getElementById('f-jenis').value;
+  var status = document.getElementById('f-status').value;
+
+  filtered = allData.filter(function(d) {
+    if (ruangan && d.ruangan !== ruangan) return false;
+    if (kategori && d.kategori !== kategori) return false;
+    if (cari && !d.nama_perawat.toLowerCase().includes(cari)) return false;
+    if (dari && d.tanggal < dari) return false;
+    if (sampai && d.tanggal > sampai) return false;
+    if (jenis && d.jenis_supervisi !== jenis) return false;
+    if (status && (d.status_perbaikan || 'Belum Diperbaiki') !== status) return false;
+    return true;
+  });
+
+  sortData();
+  renderTable();
+  renderSummary();
+  document.getElementById('rekap-sub').textContent = filtered.length + ' dari ' + allData.length + ' data supervisi';
+}
+
+function sortData() {
+  filtered.sort(function(a, b) {
+    var va = a[sortKey], vb = b[sortKey];
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb || '').toLowerCase(); }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+function sortTable(key) {
+  if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortKey = key; sortDir = 'desc'; }
+  document.querySelectorAll('.sort-icon').forEach(function(el) { el.className = 'sort-icon'; });
+  var el = document.getElementById('sort-' + key);
+  if (el) el.className = 'sort-icon ' + sortDir;
+  sortData();
+  renderTable();
+}
+
+function renderTable() {
+  var tbody = document.getElementById('rekap-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr class="empty-tr"><td colspan="9">Tidak ada data yang sesuai filter</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(function(d, i) {
+    var kat = getKategori(d.skor_total);
+    var st = d.status_perbaikan || 'Belum Diperbaiki';
+    var stCls = st === 'Selesai' ? 'status-selesai' : st === 'Dalam Proses' ? 'status-proses' : 'status-belum';
+    var stIcon = st === 'Selesai' ? '✅' : st === 'Dalam Proses' ? '⏳' : '⚠️';
+    var jenisShort = (d.jenis_supervisi || '-').replace('Supervisi ', '');
+    return '<tr>' +
+      '<td>' + formatTanggal(d.tanggal) + '</td>' +
+      '<td><span style="font-size:11px">' + jenisShort + '</span></td>' +
+      '<td>' + d.ruangan + '</td>' +
+      '<td style="font-weight:500">' + d.nama_perawat + '</td>' +
+      '<td>' + ((d.shift || '').split(' ')[0] || '–') + '</td>' +
+      '<td><span style="font-weight:700;font-size:14px">' + d.skor_total + '%</span></td>' +
+      '<td><span class="badge ' + kat.cls + '">' + kat.label + '</span></td>' +
+      '<td><span class="status-badge ' + stCls + '">' + stIcon + ' ' + st + '</span></td>' +
+      '<td class="expand-btn no-print" onclick="toggleDetail(' + i + ',this)">▶ Lihat</td>' +
+    '</tr>' +
+    '<tr class="detail-row" id="detail-' + i + '">' +
+      '<td colspan="9">' +
+        '<div class="asp-grid">' +
+          '<div class="asp-cell"><div class="asp-lbl">Persiapan</div><div class="asp-val" style="color:' + (d.skor_persiapan >= 71 ? 'var(--green)' : 'var(--amber)') + '">' + (d.skor_persiapan || '–') + '%</div></div>' +
+          '<div class="asp-cell"><div class="asp-lbl">Pelaksanaan</div><div class="asp-val" style="color:' + (d.skor_pelaksanaan >= 71 ? 'var(--green)' : 'var(--amber)') + '">' + (d.skor_pelaksanaan || '–') + '%</div></div>' +
+          '<div class="asp-cell"><div class="asp-lbl">Dokumentasi</div><div class="asp-val" style="color:' + (d.skor_dokumentasi >= 71 ? 'var(--green)' : 'var(--amber)') + '">' + (d.skor_dokumentasi || '–') + '%</div></div>' +
+        '</div>' +
+        (d.catatan ? '<div style="font-size:12px;color:var(--text-sec);margin-top:6px"><strong>Catatan:</strong> ' + d.catatan + '</div>' : '') +
+        (d.rekomendasi ? '<div style="font-size:12px;color:var(--text-sec);margin-top:4px"><strong>Rekomendasi:</strong> ' + d.rekomendasi + '</div>' : '') +
+        (d.supervisor ? '<div style="font-size:11px;color:var(--text-hint);margin-top:4px">Supervisor: ' + d.supervisor + '</div>' : '') +
+        (d.target_perbaikan ? '<div style="font-size:11px;color:var(--text-hint);margin-top:4px">Target Perbaikan: ' + formatTanggal(d.target_perbaikan) + '</div>' : '') +
+        '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+          '<div style="font-size:11px;color:var(--text-sec)">Status Perbaikan:</div>' +
+          '<select id="status-sel-' + i + '" style="padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg);font-family:inherit">' +
+            '<option value="Belum Diperbaiki"' + (st === 'Belum Diperbaiki' ? ' selected' : '') + '>⚠️ Belum Diperbaiki</option>' +
+            '<option value="Dalam Proses"' + (st === 'Dalam Proses' ? ' selected' : '') + '>⏳ Dalam Proses</option>' +
+            '<option value="Selesai"' + (st === 'Selesai' ? ' selected' : '') + '>✅ Selesai</option>' +
+          '</select>' +
+          '<button class="status-toggle' + (st === 'Selesai' ? ' is-done' : '') + '" id="status-btn-' + i + '" onclick="updateStatus(' + i + ')">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+            ' Simpan Status' +
+          '</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function toggleDetail(i, btn) {
+  var row = document.getElementById('detail-' + i);
+  var open = row.classList.contains('open');
+  row.classList.toggle('open', !open);
+  btn.textContent = open ? '▶ Lihat' : '▼ Tutup';
+}
+
+function renderSummary() {
+  if (!filtered.length) { document.getElementById('summary-stats').innerHTML = ''; return; }
+  var avg = Math.round(filtered.reduce(function(a,b) { return a + b.skor_total; }, 0) / filtered.length);
+  var max = Math.max.apply(null, filtered.map(function(d) { return d.skor_total; }));
+  var min = Math.min.apply(null, filtered.map(function(d) { return d.skor_total; }));
+  var katCount = {};
+  filtered.forEach(function(d) { katCount[d.kategori] = (katCount[d.kategori]||0)+1; });
+  var dom = Object.entries(katCount).sort(function(a,b) { return b[1]-a[1]; })[0];
+  document.getElementById('summary-stats').innerHTML =
+    '<div class="stat-card"><div class="stat-label">Total Data</div><div class="stat-value">' + filtered.length + '</div><div class="stat-sub">sesi supervisi</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Rata-rata Skor</div><div class="stat-value">' + avg + '%</div><div class="stat-sub">' + getKategori(avg).label + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Skor Tertinggi</div><div class="stat-value">' + max + '%</div><div class="stat-sub">dari hasil filter</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Kategori Terbanyak</div><div class="stat-value" style="font-size:16px">' + (dom ? dom[0] : '–') + '</div><div class="stat-sub">' + (dom ? dom[1] : 0) + ' sesi</div></div>';
+}
+
+function resetFilter() {
+  ['f-ruangan','f-kategori','f-status','f-jenis'].forEach(function(id) { document.getElementById(id).value = ''; });
+  ['f-dari','f-sampai','f-cari'].forEach(function(id) { document.getElementById(id).value = ''; });
+  applyFilter();
+}
+
+function exportCSV() {
+  var header = ['Tanggal','Supervisor','Ruangan','Perawat','Jabatan','Shift','Jenis Supervisi','Persiapan','Pelaksanaan','Dokumentasi','Total','Kategori','Status','Catatan','Rekomendasi'];
+  var rows = filtered.map(function(d) {
+    return [
+      d.tanggal, d.supervisor, d.ruangan, d.nama_perawat, d.jabatan, d.shift,
+      d.jenis_supervisi, d.skor_persiapan, d.skor_pelaksanaan, d.skor_dokumentasi,
+      d.skor_total, d.kategori, d.status_perbaikan || 'Belum Diperbaiki',
+      '"' + (d.catatan||'').replace(/"/g,'""') + '"', '"' + (d.rekomendasi||'').replace(/"/g,'""') + '"'
+    ];
+  });
+  var csv = [header].concat(rows).map(function(r) { return r.join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'rekap-supervisi-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+function refreshRekap() {
+  var btn = document.querySelector('.refresh-btn');
+  btn.classList.add('spinning');
+  loadData();
+  setTimeout(function() { btn.classList.remove('spinning'); }, 800);
+}
+
+async function updateStatus(filteredIndex) {
+  var d = filtered[filteredIndex];
+  if (!d) return;
+
+  var sel = document.getElementById('status-sel-' + filteredIndex);
+  var btn = document.getElementById('status-btn-' + filteredIndex);
+  var newStatus = sel.value;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading loading-dark" style="width:12px;height:12px"></span> Menyimpan...';
+
+  d.status_perbaikan = newStatus;
+  var origIdx = allData.findIndex(function(a) { return a.tanggal === d.tanggal && a.nama_perawat === d.nama_perawat && a.ruangan === d.ruangan; });
+  if (origIdx >= 0) allData[origIdx].status_perbaikan = newStatus;
+  localStorage.setItem('supervisi_data', JSON.stringify(allData));
+
+  var berhasilSync = false;
+  if (CONFIG.APPS_SCRIPT_URL && !CONFIG.APPS_SCRIPT_URL.includes('GANTI') && d._row_index) {
+    try {
+      var url = CONFIG.APPS_SCRIPT_URL + '?action=updateStatus&row=' + d._row_index + '&status=' + encodeURIComponent(newStatus);
+      var resp = await fetch(url);
+      var result = await resp.json();
+      berhasilSync = result.status === 'ok';
+    } catch (e) {
+      console.warn('Gagal sync status ke Sheets:', e);
+    }
+  }
+
+  btn.disabled = false;
+  btn.className = 'status-toggle' + (newStatus === 'Selesai' ? ' is-done' : '');
+  btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Simpan Status';
+
+  renderTable();
+  renderSummary();
+
+  var syncMsg = berhasilSync ? ' (tersinkron ke Sheets)' : d._row_index ? ' (hanya lokal)' : ' (disimpan lokal)';
+  showToast('Status diubah ke "' + newStatus + '"' + syncMsg, 'success');
+}
+
+function showToast(msg, type) {
+  type = type || 'info';
+  var area = document.getElementById('toast-area');
+  area.innerHTML = '<div class="toast toast-' + type + ' show">' + msg + '</div>';
+  setTimeout(function() { area.innerHTML = ''; }, 4000);
+}
+
+loadData();
+</script>
+</body>
+</html>

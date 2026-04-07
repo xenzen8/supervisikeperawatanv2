@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Formulir Supervisi</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.form-header{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:1.25rem;margin-bottom:1.25rem}
+.step-bar{display:flex;gap:0;margin-bottom:1.5rem;background:var(--bg);
+  border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.step{flex:1;padding:10px 6px;text-align:center;font-size:11px;color:var(--text-sec);
+  border-right:1px solid var(--border);cursor:pointer;transition:background .15s}
+.step:last-child{border-right:none}
+.step.active{background:var(--blue-light);color:var(--blue);font-weight:600}
+.step.done{background:var(--green-light);color:var(--green)}
+.step-num{display:block;font-size:15px;font-weight:700;line-height:1}
+.step-lbl{display:block;font-size:9px;margin-top:2px}
+.pane{display:none}
+.pane.active{display:block}
+.skor-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:1rem 0}
+.skor-box{background:var(--bg2);border-radius:var(--radius);padding:8px 10px}
+.skor-box-lbl{font-size:10px;color:var(--text-sec);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.skor-box-val{font-size:20px;font-weight:700;color:var(--text);margin-top:2px;line-height:1}
+.skor-box-max{font-size:10px;color:var(--text-hint)}
+.total-box{background:var(--blue-light);border:1.5px solid var(--blue-mid);border-radius:var(--radius-lg);
+  padding:1.25rem;display:flex;align-items:center;justify-content:space-between;margin:1rem 0}
+.total-val{font-size:36px;font-weight:800;color:var(--blue)}
+.total-meta{font-size:13px;color:var(--blue)}
+.success-screen{text-align:center;padding:2.5rem 1rem}
+.success-icon{width:64px;height:64px;background:var(--green-light);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 1rem}
+.selected-jenis-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;
+  background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:var(--radius);
+  font-size:12px;font-weight:500;color:var(--blue);margin-bottom:1rem}
+@media(max-width:768px){
+  .step-bar{border-radius:var(--radius)}
+  .step{padding:8px 4px;font-size:10px}
+  .step-num{font-size:13px}
+  .step-lbl{font-size:8px}
+  .skor-summary{grid-template-columns:1fr 1fr 1fr}
+  .skor-box-val{font-size:16px}
+  .total-box{flex-direction:column;gap:8px;text-align:center;padding:1rem}
+  .total-val{font-size:28px}
+}
+@media(max-width:480px){
+  .skor-summary{grid-template-columns:1fr}
+  .score-group{gap:4px}
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">Supervisi <span>RS</span></div>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="nav-links">
+    <a href="index.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Beranda</a>
+    <a href="form.html" class="active" onclick="document.querySelector('.nav-links').classList.remove('open')">Formulir</a>
+    <a href="rekap.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Rekap</a>
+    <a href="dashboard.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Dashboard</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Formulir Supervisi Keperawatan</div>
+      <div class="page-sub">Pilih jenis supervisi, isi identitas, dan nilai setiap item. Skor dihitung otomatis.</div>
+    </div>
+    <div class="page-header-actions">
+      <button class="refresh-btn" onclick="refreshFormPage()" title="Refresh halaman">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div id="toast-area"></div>
+
+  <!-- STEP BAR -->
+  <div class="step-bar" id="step-bar">
+    <div class="step active" onclick="goStep(0)"><span class="step-num">1</span><span class="step-lbl">Jenis</span></div>
+    <div class="step" onclick="goStep(1)"><span class="step-num">2</span><span class="step-lbl">Identitas</span></div>
+    <div class="step" onclick="goStep(2)"><span class="step-num">3</span><span class="step-lbl">Instrumen</span></div>
+    <div class="step" onclick="goStep(3)"><span class="step-num">4</span><span class="step-lbl">Catatan</span></div>
+    <div class="step" onclick="goStep(4)"><span class="step-num">5</span><span class="step-lbl">Pratinjau</span></div>
+  </div>
+
+  <!-- PANE 0: PILIH JENIS SUPERVISI -->
+  <div class="pane active" id="pane-0">
+    <div class="card">
+      <div class="card-title">Pilih Jenis Supervisi yang Akan Dilakukan</div>
+      <div class="supervisi-grid" id="jenis-grid"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-primary btn-lg" onclick="nextStep(0)">Lanjut ke Identitas →</button>
+    </div>
+  </div>
+
+  <!-- PANE 1: IDENTITAS -->
+  <div class="pane" id="pane-1">
+    <div class="card">
+      <div class="card-title">Data Identitas Supervisi</div>
+      <div id="selected-jenis-display"></div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Nama Supervisor <span class="req">*</span></label>
+          <input type="text" id="f-supervisor" placeholder="Nama lengkap supervisor" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tanggal Supervisi <span class="req">*</span></label>
+          <input type="date" id="f-tanggal" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ruangan <span class="req">*</span></label>
+          <select id="f-ruangan" required onchange="updateDropdownPerawat()">
+            <option value="">— Pilih ruangan —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shift Dinas <span class="req">*</span></label>
+          <select id="f-shift" required>
+            <option value="">— Pilih shift —</option>
+            <option>Pagi (07.00–14.00)</option>
+            <option>Siang (14.00–21.00)</option>
+            <option>Malam (21.00–07.00)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nama Perawat yang Disupervisi <span class="req">*</span></label>
+          <select id="f-perawat" required onchange="updateJabatan()">
+            <option value="">— Pilih ruangan dulu —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jabatan</label>
+          <input type="text" id="f-jabatan" readonly placeholder="Otomatis dari pilihan perawat" style="background:var(--bg2);color:var(--text-sec)">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="goStep(0)">← Kembali</button>
+      <button class="btn btn-primary btn-lg" onclick="nextStep(1)">Lanjut ke Instrumen →</button>
+    </div>
+  </div>
+
+  <!-- PANE 2: INSTRUMEN -->
+  <div class="pane" id="pane-2">
+    <div id="instrumen-container"></div>
+    <div class="skor-summary" id="skor-summary">
+      <div class="skor-box"><div class="skor-box-lbl">Persiapan</div><div class="skor-box-val" id="s-persiapan">–</div><div class="skor-box-max">dari 100</div></div>
+      <div class="skor-box"><div class="skor-box-lbl">Pelaksanaan</div><div class="skor-box-val" id="s-pelaksanaan">–</div><div class="skor-box-max">dari 100</div></div>
+      <div class="skor-box"><div class="skor-box-lbl">Dokumentasi</div><div class="skor-box-val" id="s-dokumentasi">–</div><div class="skor-box-max">dari 100</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="goStep(1)">← Kembali</button>
+      <button class="btn btn-primary btn-lg" onclick="nextStep(2)">Lanjut ke Catatan →</button>
+    </div>
+  </div>
+
+  <!-- PANE 3: CATATAN -->
+  <div class="pane" id="pane-3">
+    <div class="card">
+      <div class="card-title">Catatan &amp; Rekomendasi Supervisor</div>
+      <div class="form-group">
+        <label class="form-label">Temuan &amp; Catatan Supervisi</label>
+        <textarea id="f-catatan" rows="5" placeholder="Tuliskan temuan observasi, hal yang sudah baik, dan area yang perlu perbaikan..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rekomendasi Tindak Lanjut</label>
+        <textarea id="f-rekomendasi" rows="4" placeholder="Rencana pembinaan, pelatihan yang disarankan, atau tindakan perbaikan spesifik..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Perbaikan (deadline)</label>
+        <input type="date" id="f-target">
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="goStep(2)">← Kembali</button>
+      <button class="btn btn-primary btn-lg" onclick="nextStep(3)">Lanjut ke Pratinjau →</button>
+    </div>
+  </div>
+
+  <!-- PANE 4: PRATINJAU -->
+  <div class="pane" id="pane-4">
+    <div class="card" id="preview-card">
+      <div class="card-title">Pratinjau — periksa sebelum menyimpan</div>
+      <div id="preview-content"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:1rem;gap:10px">
+      <button class="btn btn-secondary" onclick="goStep(3)">← Kembali Edit</button>
+      <button class="btn btn-success btn-lg" id="btn-submit" onclick="submitForm()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Simpan &amp; Kirim ke Google Sheets
+      </button>
+    </div>
+  </div>
+
+  <!-- PANE 5: SUKSES -->
+  <div class="pane" id="pane-5">
+    <div class="card">
+      <div class="success-screen">
+        <div class="success-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B6D11" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">Data Berhasil Disimpan!</div>
+        <div style="font-size:13px;color:var(--text-sec);margin-bottom:1.5rem" id="success-msg">Data supervisi telah dikirim ke Google Sheets.</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="resetForm()">Isi Formulir Baru</button>
+          <a href="rekap.html" class="btn btn-secondary">Lihat Rekap Data</a>
+          <a href="dashboard.html" class="btn btn-secondary">Buka Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+let selectedJenis = null;
+let jabatan = '';
+let scores = {};
+let currentStep = 0;
+
+// Init
+document.getElementById('f-tanggal').value = new Date().toISOString().split('T')[0];
+
+// Populate ruangan dropdown
+const selRuangan = document.getElementById('f-ruangan');
+MASTER.ruangan.forEach(r => {
+  const opt = document.createElement('option');
+  opt.value = opt.textContent = r;
+  selRuangan.appendChild(opt);
+});
+
+// Populate jenis supervisi cards
+const jenisGrid = document.getElementById('jenis-grid');
+JENIS_SUPERVISI.forEach(js => {
+  const card = document.createElement('div');
+  card.className = 'supervisi-card';
+  card.dataset.id = js.id;
+  card.onclick = function() { selectJenis(js.id); };
+  card.innerHTML = `
+    <div class="check-mark">✓</div>
+    <div class="supervisi-card-icon">${js.icon}</div>
+    <div class="supervisi-card-kode">${js.kode}. ${js.id.replace(/_/g,' ')}</div>
+    <div class="supervisi-card-title">${js.judul}</div>
+    <div class="supervisi-card-desc">${js.deskripsi}</div>`;
+  jenisGrid.appendChild(card);
+});
+
+function selectJenis(id) {
+  selectedJenis = JENIS_SUPERVISI.find(j => j.id === id);
+  document.querySelectorAll('.supervisi-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.id === id);
+  });
+}
+
+function updateDropdownPerawat() {
+  const ruangan = document.getElementById('f-ruangan').value;
+  const sel = document.getElementById('f-perawat');
+  sel.innerHTML = '<option value="">— Pilih perawat —</option>';
+  document.getElementById('f-jabatan').value = '';
+  jabatan = '';
+  if (!ruangan) return;
+  MASTER.staf.filter(s => s.ruangan === ruangan).forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.nama;
+    opt.textContent = s.nama + ' (' + s.jabatan + ')';
+    opt.dataset.jabatan = s.jabatan;
+    sel.appendChild(opt);
+  });
+}
+
+function updateJabatan() {
+  const sel = document.getElementById('f-perawat');
+  const opt = sel.options[sel.selectedIndex];
+  jabatan = opt?.dataset?.jabatan || '';
+  document.getElementById('f-jabatan').value = jabatan;
+}
+
+function buildInstrumen() {
+  if (!selectedJenis) return;
+  scores = {};
+
+  const container = document.getElementById('instrumen-container');
+  container.innerHTML = '';
+
+  selectedJenis.sections.forEach(sec => {
+    scores[sec.id] = new Array(sec.items.length).fill(0);
+
+    const secDiv = document.createElement('div');
+    secDiv.style.marginBottom = '1rem';
+
+    const head = document.createElement('div');
+    head.className = 'section-head';
+    head.innerHTML = '<span class="section-title">' + sec.judul + ' (Bobot: ' + sec.bobot + '%)</span>' +
+      '<span class="section-score" id="ss-' + sec.id + '" style="color:var(--text-sec)">– / 100</span>';
+
+    const body = document.createElement('div');
+    body.className = 'section-body';
+
+    if (sec.groups) {
+      let globalIdx = 0;
+      sec.groups.forEach(function(group) {
+        var groupLabel = document.createElement('div');
+        groupLabel.className = 'group-label';
+        groupLabel.textContent = group.label;
+        body.appendChild(groupLabel);
+
+        for (var i = 0; i < group.count; i++) {
+          var row = createItemRow(sec.id, globalIdx, globalIdx + 1, sec.items[globalIdx]);
+          body.appendChild(row);
+          globalIdx++;
+        }
+      });
+    } else {
+      sec.items.forEach(function(item, i) {
+        var row = createItemRow(sec.id, i, i + 1, item);
+        body.appendChild(row);
+      });
+    }
+
+    secDiv.appendChild(head);
+    secDiv.appendChild(body);
+    container.appendChild(secDiv);
+  });
+  updateSkorSummary();
+}
+
+function createItemRow(secId, scoreIdx, displayNum, itemText) {
+  var row = document.createElement('div');
+  row.className = 'item-row';
+  row.innerHTML =
+    '<span class="item-num">' + displayNum + '.</span>' +
+    '<span class="item-text">' + itemText + '</span>' +
+    '<div class="score-group" id="sg-' + secId + '-' + scoreIdx + '">' +
+      [1,2,3,4].map(function(v) {
+        return '<button class="score-btn" data-v="' + v + '" onclick="setScore(\'' + secId + '\',' + scoreIdx + ',' + v + ')">' + v + '</button>';
+      }).join('') +
+    '</div>';
+  return row;
+}
+
+function setScore(secId, idx, val) {
+  scores[secId][idx] = val;
+  var sg = document.getElementById('sg-' + secId + '-' + idx);
+  sg.querySelectorAll('.score-btn').forEach(function(btn) {
+    var v = parseInt(btn.dataset.v);
+    btn.className = 'score-btn' + (v === val ? ' sel-' + v : '');
+  });
+  updateSkorSection(secId);
+  updateSkorSummary();
+}
+
+function updateSkorSection(secId) {
+  var s = scores[secId];
+  var pct = hitungSkorAspek(s);
+  var el = document.getElementById('ss-' + secId);
+  if (el) {
+    el.textContent = pct + ' / 100';
+    el.style.color = pct >= 86 ? 'var(--green)' : pct >= 71 ? 'var(--blue)' : pct >= 56 ? 'var(--amber)' : 'var(--red)';
+  }
+}
+
+function updateSkorSummary() {
+  if (!selectedJenis) return;
+  var labels = ['persiapan', 'pelaksanaan', 'dokumentasi'];
+  selectedJenis.sections.forEach(function(sec, i) {
+    var pct = hitungSkorAspek(scores[sec.id] || []);
+    var el = document.getElementById('s-' + labels[i]);
+    if (el) el.textContent = pct > 0 ? pct + '%' : '–';
+  });
+}
+
+// STEP NAVIGATION
+function goStep(n) {
+  document.querySelectorAll('.pane').forEach(function(p, i) { p.classList.toggle('active', i === n); });
+  document.querySelectorAll('.step').forEach(function(s, i) {
+    s.classList.remove('active', 'done');
+    if (i === n) s.classList.add('active');
+    else if (i < n) s.classList.add('done');
+  });
+  currentStep = n;
+  if (n === 2) buildInstrumen();
+  if (n === 4) buildPreview();
+}
+
+function nextStep(current) {
+  if (current === 0) {
+    if (!selectedJenis) {
+      showToast('Harap pilih salah satu jenis supervisi.', 'error');
+      return;
+    }
+  }
+  if (current === 1) {
+    var req = ['f-supervisor', 'f-tanggal', 'f-ruangan', 'f-shift', 'f-perawat'];
+    for (var k = 0; k < req.length; k++) {
+      if (!document.getElementById(req[k]).value) {
+        showToast('Harap lengkapi semua data identitas yang wajib diisi.', 'error');
+        document.getElementById(req[k]).focus();
+        return;
+      }
+    }
+  }
+  if (current === 2) {
+    if (!selectedJenis) { showToast('Pilih jenis supervisi terlebih dahulu.', 'error'); goStep(0); return; }
+    var allFilled = selectedJenis.sections.every(function(sec) {
+      return scores[sec.id] && scores[sec.id].every(function(v) { return v > 0; });
+    });
+    if (!allFilled) { showToast('Harap isi semua item penilaian sebelum melanjutkan.', 'error'); return; }
+  }
+  goStep(current + 1);
+}
+
+function buildPreview() {
+  if (!selectedJenis) return;
+  var skor_aspek = selectedJenis.sections.map(function(sec) { return hitungSkorAspek(scores[sec.id]); });
+  var bobot = selectedJenis.sections.map(function(s) { return s.bobot; });
+  var total = hitungSkorTotal(skor_aspek, bobot);
+  var kat = getKategori(total);
+
+  // Update display
+  var displayEl = document.getElementById('selected-jenis-display');
+  if (displayEl) {
+    displayEl.innerHTML = '<div class="selected-jenis-badge">' + selectedJenis.icon + ' ' + selectedJenis.judul + '</div>';
+  }
+
+  var pc = document.getElementById('preview-content');
+  pc.innerHTML =
+    '<div class="selected-jenis-badge" style="margin-bottom:1rem">' + selectedJenis.icon + ' ' + selectedJenis.judul + '</div>' +
+    '<div class="grid-2" style="margin-bottom:1rem">' +
+      '<div><div style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em">Supervisor</div>' +
+        '<div style="font-size:14px;font-weight:500;margin-top:2px">' + document.getElementById('f-supervisor').value + '</div></div>' +
+      '<div><div style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em">Tanggal / Shift</div>' +
+        '<div style="font-size:14px;font-weight:500;margin-top:2px">' + formatTanggal(document.getElementById('f-tanggal').value) + ' · ' + document.getElementById('f-shift').value + '</div></div>' +
+      '<div><div style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em">Ruangan</div>' +
+        '<div style="font-size:14px;font-weight:500;margin-top:2px">' + document.getElementById('f-ruangan').value + '</div></div>' +
+      '<div><div style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em">Perawat / Jabatan</div>' +
+        '<div style="font-size:14px;font-weight:500;margin-top:2px">' + document.getElementById('f-perawat').value + '</div>' +
+        '<div style="font-size:11px;color:var(--text-sec)">' + jabatan + '</div></div>' +
+    '</div>' +
+    '<div class="total-box">' +
+      '<div><div style="font-size:13px;color:var(--blue);font-weight:500">Skor Total</div>' +
+        '<div class="total-val">' + total + '%</div></div>' +
+      '<span class="badge ' + kat.cls + '" style="font-size:14px;padding:6px 14px">' + kat.label + '</span>' +
+    '</div>' +
+    '<div class="skor-summary">' +
+      selectedJenis.sections.map(function(sec, i) {
+        return '<div class="skor-box"><div class="skor-box-lbl">' + sec.judul + '</div>' +
+          '<div class="skor-box-val" style="font-size:18px">' + skor_aspek[i] + '%</div>' +
+          '<div class="skor-box-max">' + sec.bobot + '% bobot</div></div>';
+      }).join('') +
+    '</div>' +
+    (document.getElementById('f-catatan').value ?
+    '<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Catatan</div>' +
+      '<div style="font-size:13px;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:var(--radius)">' + document.getElementById('f-catatan').value + '</div></div>' : '') +
+    (document.getElementById('f-rekomendasi').value ?
+    '<div><div style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Rekomendasi Tindak Lanjut</div>' +
+      '<div style="font-size:13px;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:var(--radius)">' + document.getElementById('f-rekomendasi').value + '</div></div>' : '');
+}
+
+async function submitForm() {
+  var btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Menyimpan...';
+
+  var skor_aspek = selectedJenis.sections.map(function(sec) { return hitungSkorAspek(scores[sec.id]); });
+  var bobot = selectedJenis.sections.map(function(s) { return s.bobot; });
+  var total = hitungSkorTotal(skor_aspek, bobot);
+  var kat = getKategori(total);
+
+  var payload = {
+    supervisor: document.getElementById('f-supervisor').value,
+    tanggal: document.getElementById('f-tanggal').value,
+    ruangan: document.getElementById('f-ruangan').value,
+    shift: document.getElementById('f-shift').value,
+    nama_perawat: document.getElementById('f-perawat').value,
+    jabatan: jabatan,
+    jenis_supervisi: selectedJenis.judul,
+    skor_persiapan: skor_aspek[0],
+    skor_pelaksanaan: skor_aspek[1],
+    skor_dokumentasi: skor_aspek[2],
+    skor_total: total,
+    kategori: kat.label,
+    catatan: document.getElementById('f-catatan').value,
+    rekomendasi: document.getElementById('f-rekomendasi').value,
+    target_perbaikan: document.getElementById('f-target').value,
+    detail_scores: JSON.stringify(scores),
+    status_perbaikan: 'Belum Diperbaiki'
+  };
+
+  simpanLokal(payload);
+
+  var berhasil = false;
+  if (CONFIG.APPS_SCRIPT_URL && !CONFIG.APPS_SCRIPT_URL.includes('GANTI')) {
+    try {
+      berhasil = await kirimViaForm(payload);
+    } catch (e) {
+      console.error('Gagal kirim ke Sheets:', e);
+      berhasil = false;
+    }
+  }
+
+  document.getElementById('success-msg').textContent = berhasil
+    ? 'Data berhasil dikirim ke Google Sheets. Skor: ' + total + '% (' + kat.label + ')'
+    : 'Data disimpan secara lokal (offline). Skor: ' + total + '% (' + kat.label + ')';
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Simpan &amp; Kirim ke Google Sheets';
+
+  goStep(5);
+  document.getElementById('step-bar').style.display = 'none';
+}
+
+function kirimViaForm(payload) {
+  return new Promise(function(resolve) {
+    var url = CONFIG.APPS_SCRIPT_URL + '?action=saveData&data=' + encodeURIComponent(JSON.stringify(payload));
+    fetch(url, { redirect: 'follow' })
+      .then(function(resp) {
+        if (!resp.ok) throw new Error('Response not ok: ' + resp.status);
+        return resp.json();
+      })
+      .then(function(result) {
+        resolve(result.status === 'ok');
+      })
+      .catch(function(err) {
+        console.warn('Fetch GET gagal, mencoba via iframe...', err);
+        kirimViaIframe(payload).then(resolve).catch(function() { resolve(false); });
+      });
+  });
+}
+
+function kirimViaIframe(payload) {
+  return new Promise(function(resolve) {
+    var iframeName = 'submit_frame_' + Date.now();
+    var iframe = document.createElement('iframe');
+    iframe.name = iframeName;
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = CONFIG.APPS_SCRIPT_URL;
+    form.target = iframeName;
+    form.style.display = 'none';
+
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'payload';
+    input.value = JSON.stringify(payload);
+    form.appendChild(input);
+    document.body.appendChild(form);
+
+    var timeout = setTimeout(function() { cleanup(); resolve(true); }, 5000);
+    iframe.onload = function() { clearTimeout(timeout); cleanup(); resolve(true); };
+    iframe.onerror = function() { clearTimeout(timeout); cleanup(); resolve(false); };
+
+    function cleanup() {
+      try { document.body.removeChild(form); } catch(e) {}
+      try { document.body.removeChild(iframe); } catch(e) {}
+    }
+    form.submit();
+  });
+}
+
+function resetForm() {
+  document.getElementById('step-bar').style.display = '';
+  document.getElementById('f-supervisor').value = '';
+  document.getElementById('f-tanggal').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-ruangan').value = '';
+  document.getElementById('f-shift').value = '';
+  document.getElementById('f-perawat').innerHTML = '<option value="">— Pilih ruangan dulu —</option>';
+  document.getElementById('f-jabatan').value = '';
+  document.getElementById('f-catatan').value = '';
+  document.getElementById('f-rekomendasi').value = '';
+  document.getElementById('f-target').value = '';
+  document.getElementById('instrumen-container').innerHTML = '';
+  document.getElementById('selected-jenis-display').innerHTML = '';
+  jabatan = '';
+  scores = {};
+  selectedJenis = null;
+  document.querySelectorAll('.supervisi-card').forEach(function(c) { c.classList.remove('selected'); });
+  goStep(0);
+}
+
+function showToast(msg, type) {
+  type = type || 'info';
+  var area = document.getElementById('toast-area');
+  area.innerHTML = '<div class="toast toast-' + type + ' show">' + msg + '</div>';
+  setTimeout(function() { area.innerHTML = ''; }, 4000);
+}
+
+function refreshFormPage() {
+  var btn = document.querySelector('.refresh-btn');
+  btn.classList.add('spinning');
+  setTimeout(function() { btn.classList.remove('spinning'); location.reload(); }, 400);
+}
+</script>
+</body>
+</html>

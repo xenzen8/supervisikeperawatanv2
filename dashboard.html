@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard Supervisi</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .chart-card {background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+    .chart-title {font-size:13px;font-weight:600;color:var(--text);margin-bottom:1rem}
+    .chart-wrap {position:relative;height:220px}
+    .chart-wrap-tall {position:relative;height:280px}
+    .top-row {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+    .rank-row {display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+    .rank-row:last-child {border-bottom:none}
+    .rank-num {width:20px;font-size:12px;font-weight:700;color:var(--text-hint);text-align:center;flex-shrink:0}
+    .rank-name {flex:1;font-size:13px;color:var(--text)}
+    .rank-room {font-size:11px;color:var(--text-sec)}
+    .rank-bar-wrap {width:100px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+    .rank-bar {height:100%;border-radius:3px}
+    .period-select {padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;color:var(--text);background:var(--bg);font-family:inherit;cursor:pointer;outline:none}
+    .period-select:focus {border-color:var(--blue-mid)}
+    .no-data {text-align:center;padding:3rem 1rem;color:var(--text-sec);font-size:13px}
+    .dash-controls {display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    @media(max-width:768px){
+      .chart-card{padding:1rem}
+      .chart-wrap{height:200px}
+      .chart-wrap-tall{height:240px}
+      .dash-controls{width:100%}
+      .period-select{flex:1;min-width:0}
+      .rank-bar-wrap{width:60px}
+    }
+    @media(max-width:480px){
+      .chart-wrap{height:180px}
+      .chart-wrap-tall{height:200px}
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="nav-brand">Supervisi <span>RS</span></div>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+    </button>
+    <div class="nav-links">
+      <a href="index.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Beranda</a>
+      <a href="form.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Formulir</a>
+      <a href="rekap.html" onclick="document.querySelector('.nav-links').classList.remove('open')">Rekap</a>
+      <a href="dashboard.html" class="active" onclick="document.querySelector('.nav-links').classList.remove('open')">Dashboard</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header" style="margin-bottom:1rem">
+      <div>
+        <div class="page-title">Dashboard Analitik</div>
+        <div class="page-sub">Visualisasi tren kinerja supervisi keperawatan</div>
+      </div>
+      <div class="dash-controls">
+        <label style="font-size:12px;color:var(--text-sec)">Periode:</label>
+        <select class="period-select" id="sel-periode" onchange="renderAll()">
+          <option value="3">3 bulan terakhir</option>
+          <option value="6" selected>6 bulan terakhir</option>
+          <option value="12">12 bulan terakhir</option>
+          <option value="0">Semua data</option>
+        </select>
+        <select class="period-select" id="sel-ruangan" onchange="renderAll()">
+          <option value="">Semua ruangan</option>
+        </select>
+        <select class="period-select" id="sel-jenis" onchange="renderAll()">
+          <option value="">Semua jenis</option>
+        </select>
+        <button class="refresh-btn" onclick="refreshDashboard()" title="Refresh data">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:1.25rem" id="kpi-cards">
+      <div class="stat-card"><div class="stat-label">Total Supervisi</div><div class="stat-value" id="k-total">–</div></div>
+      <div class="stat-card"><div class="stat-label">Rata-rata Skor</div><div class="stat-value" id="k-rata">–</div></div>
+      <div class="stat-card"><div class="stat-label">Kategori Sangat Baik</div><div class="stat-value" id="k-sb">–</div></div>
+      <div class="stat-card"><div class="stat-label">Kategori Kurang</div><div class="stat-value" id="k-kurang">–</div></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.25rem">
+      <div class="chart-card">
+        <div class="chart-title">Tren skor bulanan</div>
+        <div class="chart-wrap"><canvas id="chart-line"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Profil aspek (rata-rata)</div>
+        <div class="chart-wrap"><canvas id="chart-radar"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.25rem">
+      <div class="chart-card">
+        <div class="chart-title">Perbandingan skor per ruangan</div>
+        <div class="chart-wrap-tall"><canvas id="chart-bar"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribusi kategori</div>
+        <div class="chart-wrap"><canvas id="chart-doughnut"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Perawat dengan skor tertinggi (top 5)</div>
+        <div id="top-list"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Perawat yang perlu perhatian (5 terendah)</div>
+        <div id="bottom-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="config.js"></script>
+  <script>
+    var allData = [];
+    var charts = {};
+
+    var COLORS = {
+      blue: '#378ADD', green: '#639922', amber: '#BA7517',
+      red: '#E24B4A', purple: '#7F77DD', teal: '#1D9E75'
+    };
+
+    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#73726c';
+    Chart.defaults.plugins.legend.labels.boxWidth = 12;
+    Chart.defaults.plugins.legend.labels.padding = 10;
+
+    function destroyChart(id) {
+      if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+    }
+
+    function getFiltered() {
+      var bulan = parseInt(document.getElementById('sel-periode').value);
+      var ruangan = document.getElementById('sel-ruangan').value;
+      var jenis = document.getElementById('sel-jenis').value;
+      var data = allData.slice();
+      if (ruangan) data = data.filter(function(d) { return d.ruangan === ruangan; });
+      if (jenis) data = data.filter(function(d) { return d.jenis_supervisi === jenis; });
+      if (bulan > 0) {
+        var cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - bulan);
+        data = data.filter(function(d) { return new Date(d.tanggal) >= cutoff; });
+      }
+      return data;
+    }
+
+    function renderAll() {
+      var data = getFiltered();
+      renderKPI(data);
+      renderLine(data);
+      renderRadar(data);
+      renderBar(data);
+      renderDoughnut(data);
+      renderRanking(data);
+    }
+
+    function renderKPI(data) {
+      if (!data.length) {
+        ['k-total', 'k-rata', 'k-sb', 'k-kurang'].forEach(function(id) { document.getElementById(id).textContent = '–'; });
+        return;
+      }
+      var avg = Math.round(data.reduce(function(a, b) { return a + b.skor_total; }, 0) / data.length);
+      document.getElementById('k-total').textContent = data.length;
+      document.getElementById('k-rata').textContent = avg + '%';
+      document.getElementById('k-sb').textContent = data.filter(function(d) { return d.kategori === 'Sangat Baik'; }).length;
+      document.getElementById('k-kurang').textContent = data.filter(function(d) { return d.kategori === 'Kurang'; }).length;
+    }
+
+    function renderLine(data) {
+      destroyChart('line');
+      if (!data.length) return;
+      var byMonth = {};
+      data.forEach(function(d) {
+        var key = d.tanggal ? d.tanggal.slice(0, 7) : null;
+        if (!key) return;
+        if (!byMonth[key]) byMonth[key] = [];
+        byMonth[key].push(d.skor_total);
+      });
+      var labels = Object.keys(byMonth).sort();
+      var vals = labels.map(function(k) { return Math.round(byMonth[k].reduce(function(a,b){return a+b;},0)/byMonth[k].length); });
+      var ctx = document.getElementById('chart-line').getContext('2d');
+      charts.line = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels.map(function(l) {
+            var parts = l.split('-');
+            return new Date(parts[0], parts[1]-1).toLocaleDateString('id-ID', {month:'short', year:'2-digit'});
+          }),
+          datasets: [{
+            label: 'Rata-rata skor', data: vals,
+            borderColor: COLORS.blue, backgroundColor: 'rgba(55,138,221,.1)',
+            borderWidth: 2, fill: true, tension: 0.35,
+            pointBackgroundColor: COLORS.blue, pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,.06)' }, ticks: { callback: function(v){return v+'%';} } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderRadar(data) {
+      destroyChart('radar');
+      if (!data.length) return;
+      var avgFn = function(arr) { return arr.length ? Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length) : 0; };
+      var vals = [
+        avgFn(data.map(function(d){return d.skor_persiapan;}).filter(Boolean)),
+        avgFn(data.map(function(d){return d.skor_pelaksanaan;}).filter(Boolean)),
+        avgFn(data.map(function(d){return d.skor_dokumentasi;}).filter(Boolean))
+      ];
+      var ctx = document.getElementById('chart-radar').getContext('2d');
+      charts.radar = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['Persiapan', 'Pelaksanaan', 'Dokumentasi'],
+          datasets: [{
+            label: 'Rata-rata', data: vals,
+            backgroundColor: 'rgba(55,138,221,.15)', borderColor: COLORS.blue,
+            borderWidth: 2, pointBackgroundColor: COLORS.blue, pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { r: { min: 0, max: 100, ticks: { stepSize: 25, callback: function(v){return v+'%';} } } }
+        }
+      });
+    }
+
+    function renderBar(data) {
+      destroyChart('bar');
+      if (!data.length) return;
+      var byRoom = {};
+      data.forEach(function(d) {
+        if (!byRoom[d.ruangan]) byRoom[d.ruangan] = [];
+        byRoom[d.ruangan].push(d.skor_total);
+      });
+      var labels = Object.keys(byRoom).sort();
+      var vals = labels.map(function(r) { return Math.round(byRoom[r].reduce(function(a,b){return a+b;},0)/byRoom[r].length); });
+      var bgColors = vals.map(function(v) { return v >= 86 ? COLORS.green : v >= 71 ? COLORS.blue : v >= 56 ? COLORS.amber : COLORS.red; });
+      var ctx = document.getElementById('chart-bar').getContext('2d');
+      charts.bar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ label: 'Rata-rata skor', data: vals, backgroundColor: bgColors, borderRadius: 4, borderWidth: 0 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ' ' + ctx.raw + '%'; } } }
+          },
+          scales: {
+            x: { min: 0, max: 100, ticks: { callback: function(v){return v+'%';} }, grid: { color: 'rgba(0,0,0,.06)' } },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderDoughnut(data) {
+      destroyChart('doughnut');
+      if (!data.length) return;
+      var cats = { 'Sangat Baik': 0, 'Baik': 0, 'Cukup': 0, 'Kurang': 0 };
+      data.forEach(function(d) { if (cats[d.kategori] !== undefined) cats[d.kategori]++; });
+      var ctx = document.getElementById('chart-doughnut').getContext('2d');
+      charts.doughnut = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(cats),
+          datasets: [{
+            data: Object.values(cats),
+            backgroundColor: [COLORS.green, COLORS.blue, COLORS.amber, COLORS.red],
+            borderWidth: 2, borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '55%',
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: { callbacks: { label: function(ctx) { return ' ' + ctx.label + ': ' + ctx.raw + ' sesi'; } } }
+          }
+        }
+      });
+    }
+
+    function renderRanking(data) {
+      if (!data.length) {
+        document.getElementById('top-list').innerHTML = '<div class="no-data">Belum ada data</div>';
+        document.getElementById('bottom-list').innerHTML = '<div class="no-data">Belum ada data</div>';
+        return;
+      }
+      var byPerson = {};
+      data.forEach(function(d) {
+        if (!byPerson[d.nama_perawat]) byPerson[d.nama_perawat] = { scores: [], ruangan: d.ruangan };
+        byPerson[d.nama_perawat].scores.push(d.skor_total);
+      });
+      var ranking = Object.entries(byPerson).map(function(entry) {
+        var nama = entry[0], v = entry[1];
+        return {
+          nama: nama, ruangan: v.ruangan,
+          avg: Math.round(v.scores.reduce(function(a,b){return a+b;},0) / v.scores.length),
+          n: v.scores.length
+        };
+      }).sort(function(a,b) { return b.avg - a.avg; });
+
+      function makeList(items) {
+        return items.map(function(d, i) {
+          var kat = getKategori(d.avg);
+          var barColor = d.avg >= 86 ? COLORS.green : d.avg >= 71 ? COLORS.blue : d.avg >= 56 ? COLORS.amber : COLORS.red;
+          return '<div class="rank-row">' +
+            '<div class="rank-num">' + (i+1) + '</div>' +
+            '<div style="flex:1">' +
+              '<div class="rank-name">' + d.nama + '</div>' +
+              '<div class="rank-room">' + d.ruangan + ' · ' + d.n + ' sesi</div>' +
+              '<div class="rank-bar-wrap" style="margin-top:4px"><div class="rank-bar" style="width:' + d.avg + '%;background:' + barColor + '"></div></div>' +
+            '</div>' +
+            '<span class="badge ' + kat.cls + '">' + d.avg + '%</span>' +
+          '</div>';
+        }).join('');
+      }
+
+      document.getElementById('top-list').innerHTML = makeList(ranking.slice(0, 5));
+      document.getElementById('bottom-list').innerHTML = makeList(ranking.slice().sort(function(a,b){return a.avg-b.avg;}).slice(0, 5));
+    }
+
+    async function loadData() {
+      var data = ambilLokal();
+      if (!CONFIG.APPS_SCRIPT_URL.includes('GANTI')) {
+        try {
+          var resp = await fetch(CONFIG.APPS_SCRIPT_URL + '?action=getData');
+          var result = await resp.json();
+          if (result.data && result.data.length) {
+            data = result.data;
+            localStorage.setItem('supervisi_data', JSON.stringify(data));
+          }
+        } catch (e) { console.warn('Pakai data lokal:', e); }
+      }
+      allData = data;
+
+      // Populate ruangan filter
+      var selR = document.getElementById('sel-ruangan');
+      var ruanganSet = new Set(data.map(function(d){return d.ruangan;}));
+      Array.from(ruanganSet).sort().forEach(function(r) {
+        var opt = document.createElement('option');
+        opt.value = opt.textContent = r;
+        selR.appendChild(opt);
+      });
+
+      // Populate jenis filter
+      var selJ = document.getElementById('sel-jenis');
+      var jenisSet = new Set(data.map(function(d){return d.jenis_supervisi;}).filter(Boolean));
+      Array.from(jenisSet).sort().forEach(function(j) {
+        var opt = document.createElement('option');
+        opt.value = opt.textContent = j;
+        selJ.appendChild(opt);
+      });
+
+      renderAll();
+    }
+
+    function refreshDashboard() {
+      var btn = document.querySelector('.refresh-btn');
+      btn.classList.add('spinning');
+      loadData();
+      setTimeout(function() { btn.classList.remove('spinning'); }, 800);
+    }
+
+    loadData();
+  </script>
+</body>
+
+</html>
