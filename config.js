@@ -4,7 +4,7 @@
 // =====================================================================
 
 const CONFIG = {
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbza5xAVpqy0F-gYjqZc1gtDFeM8qCt2--mtfVuXTYv1S3wqI3OTmjcNPDmUwC9SkHIpfw/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyHJDmHtYvuwXZZi5QIXDSOLovUQjMTDaPtKU7MWayJjYIrZP-q2Ic3DAed-1U2mNQhaw/exec',
   APP_NAME: 'Supervisi Keperawatan Rawat Inap',
   RS_NAME: 'RS [UNAIR RUANG IRNA 5A]',
   VERSION: '2.0.0'
