@@ -69,10 +69,22 @@ const JENIS_SUPERVISI = [
         judul: 'Persiapan',
         bobot: 25,
         items: [
+          'Sarung tangan bersih',
+          'Obat IV sesuai advis dokter',
+          'Alcohol swab',
+          'Spuit sesuai kebutuhan',
+          'Cairan pelarut jika perlu',
+          'Bengkok/kom injeksi',
+          'Safety box',
+          'RM Dokumentasi',
           'Cuci tangan 6 langkah sesuai prosedur WHO',
           'Baca dan pahami instruksi/order dokter secara lengkap (nama obat, dosis, rute, waktu, kecepatan)',
           'Lakukan pengecekan 5 Benar (Benar Obat, Pasien, Rute, Dosis dan Waktu)',
           'Periksa kondisi obat: tanggal kadaluarsa, kejernihan larutan, keutuhan kemasan'
+        ],
+        groups: [
+          { label: 'Persiapan Alat dan Obat', count: 8 },
+          { label: 'Persiapan Perawat', count: 4 }
         ]
       },
       {
@@ -85,10 +97,16 @@ const JENIS_SUPERVISI = [
           'Cocokkan dengan gelang identitas dan MAR',
           'Jelaskan tujuan, prosedur, dan kemungkinan efek samping kepada pasien/keluarga',
           'Posisikan pasien dengan nyaman',
-          'Kaji kondisi akses IV yang sudah terpasang',
+          'Kaji kondisi akses IV yang sudah terpasang, jika sudah lancar matikan',
           'Desinfeksi port injeksi IV line menggunakan alcohol swab, tunggu kering (10\u201315 detik)',
           'Aspirasi sedikit untuk memastikan posisi jarum/kateter di dalam vena (tampak darah)',
-          'Masukkan obat perlahan sesuai kecepatan yang dianjurkan'
+          'Masukkan obat perlahan sesuai kecepatan yang dianjurkan',
+          'Monitor respon pasien selama injeksi obat',
+          'Lepaskan spuit dari injection site selang infus',
+          'Buang jarum spuit pada safety box',
+          'Rapikan pasien dan alat-alat yang digunakan',
+          'Lepaskan sarung tangan',
+          'Cuci tangan'
         ]
       },
       {
@@ -96,8 +114,8 @@ const JENIS_SUPERVISI = [
         judul: 'Dokumentasi',
         bobot: 25,
         items: [
-          'Dokumentasi nama dan tanggal lahir pasien, nama obat, dosis, rute dan waktu pemberian, kondisi akses IV, respon pasien, nama serta paraf perawat',
-          'Observasi pasien selama dan setelah injeksi (tanda reaksi alergi, rasa nyeri/terbakar di area insersi, perubahan tanda-tanda vital)'
+          'Dokumentasi nama dan tanggal lahir pasien, nama obat, dosis yang diberikan, rute dan waktu pemberian, kondisi akses IV, respon pasien, nama serta paraf perawat',
+          'Observasi pasien selama dan setelah injeksi (tanda reaksi alergi: urtikaria, sesak, hipotensi; rasa nyeri atau terbakar di area insersi; perubahan tanda-tanda vital)'
         ]
       }
     ]
